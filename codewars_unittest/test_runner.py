@@ -1,5 +1,6 @@
 import sys
 import unittest
+import warnings
 from itertools import groupby
 
 # Use timeit.default_timer for Python 2 compatibility.
@@ -10,18 +11,33 @@ from .test_result import CodewarsTestResult
 
 
 class CodewarsTestRunner(object):
-    def __init__(self, stream=None, group_by_module=False):
+    def __init__(self, stream=None, group_by_module=False, warnings=None):
         if stream is None:
             stream = sys.stdout
         self.stream = _WritelnDecorator(stream)
         self.group_by_module = group_by_module
         self.results = []
+        if warnings is None and not sys.warnoptions:
+            self.warnings = "default"
+        else:
+            # Set to given `warnings` or use `None` to respect values passed to `-W`
+            self.warnings = warnings
 
     def run(self, test):
-        if isinstance(test, unittest.TestSuite):
-            self._run_modules(_to_tree(_flatten(test)))
-        else:
-            self._run_case(test)
+        with warnings.catch_warnings():
+            if self.warnings:
+                warnings.simplefilter(self.warnings)
+                # Minimize noise from deprecated assertion methods
+                if self.warnings in ["default", "always"]:
+                    warnings.filterwarnings(
+                        "module",
+                        category=DeprecationWarning,
+                        message=r"Please use assert\w+ instead.",
+                    )
+            if isinstance(test, unittest.TestSuite):
+                self._run_modules(_to_tree(_flatten(test)))
+            else:
+                self._run_case(test)
         return self._make_result()
 
     def _make_result(self):
