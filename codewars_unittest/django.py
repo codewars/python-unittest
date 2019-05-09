@@ -5,4 +5,4 @@ from .test_runner import CodewarsTestRunner
 
 class CodewarsDjangoRunner(DiscoverRunner):
     def run_suite(self, suite, **kwargs):
-        return CodewarsTestRunner().run(suite)
+        return CodewarsTestRunner(group_by_module=True).run(suite)
