@@ -53,6 +53,20 @@ class CodewarsTestResult(unittest.TestResult):
         )
         super(CodewarsTestResult, self).addFailure(test, err)
 
+    def addSubTest(self, test, subtest, err):
+        # Keep unittest's own outcome bookkeeping (including failfast) exactly
+        # once. Successful subtests still produce the parent test's one pass.
+        super(CodewarsTestResult, self).addSubTest(test, subtest, err)
+        if err is None:
+            return
+        failure = issubclass(err[0], test.failureException)
+        marker = 'FAILED' if failure else 'ERROR'
+        self.stream.writeln('\n<{}::>Subtest {}'.format(marker, esc(str(subtest))))
+        self.stream.writeln('\n<LOG:ESC:{}>'.format('Failure' if failure else 'Error')
+                            + esc(''.join(traceback.format_exception_only(err[0], err[1]))))
+        self.stream.writeln('\n<LOG:ESC:Traceback>'
+                            + esc(self._exc_info_to_string(err, subtest)))
+
     # from unittest/result.py
     def _exc_info_to_string(self, err, test):
         exctype, value, tb = err
